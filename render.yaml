@@ -1,0 +1,82 @@
+# Render Blueprint: single merged service (Laravel API + React SPA) + Postgres.
+# Deploy: push this repo to GitHub → Render Dashboard → New → Blueprint → select repo.
+# NOTE: persistent disk needs a paid instance (Starter+). Fill the sync:false
+# secrets on first deploy. Replace the two onrender.com URLs with your domain
+# (or leave the entrypoint to auto-use RENDER_EXTERNAL_URL).
+services:
+  - type: web
+    name: book-my-diagnose
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /up
+    disk:
+      name: app-storage
+      mountPath: /var/www/html/storage/app
+      sizeGB: 2
+    envVars:
+      - key: APP_NAME
+        value: Book My Diagnose
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      # Paste generated key from dashboard (php artisan key:generate --show).
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        value: https://book-my-diagnose.onrender.com
+      - key: FRONTEND_URL
+        value: https://book-my-diagnose.onrender.com
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        fromDatabase:
+          name: bmd-postgres
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: bmd-postgres
+          property: port
+      - key: DB_DATABASE
+        fromDatabase:
+          name: bmd-postgres
+          property: databaseName
+      - key: DB_USERNAME
+        fromDatabase:
+          name: bmd-postgres
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: bmd-postgres
+          property: password
+      - key: SESSION_DRIVER
+        value: database
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: MAIL_MAILER
+        value: smtp
+      - key: MAIL_HOST
+        value: smtp-relay.brevo.com
+      - key: MAIL_PORT
+        value: 587
+      - key: MAIL_USERNAME
+        sync: false
+      - key: MAIL_PASSWORD
+        sync: false
+      - key: MAIL_ENCRYPTION
+        value: tls
+      - key: MAIL_FROM_ADDRESS
+        sync: false
+      - key: MAIL_FROM_NAME
+        value: Book My Diagnose
+
+databases:
+  - name: bmd-postgres
+    databaseName: bmd
+    user: bmd

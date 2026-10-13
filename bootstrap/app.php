@@ -23,6 +23,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // Behind Render's TLS proxy (and any CDN), respect X-Forwarded-*
+        // so generated URLs (signed report links!) use the public https host.
+        $middleware->trustProxies(at: '*');
         $middleware->appendToGroup('api', ForceApiJson::class);
         $middleware->appendToGroup('api', RequestId::class);
         $middleware->alias(['admin' => AdminAuthenticate::class]);
