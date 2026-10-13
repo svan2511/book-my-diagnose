@@ -23,6 +23,9 @@ chmod -R ug+rwx storage bootstrap/cache
 
 php artisan storage:link --force || true
 php artisan migrate --force
+# Seeders are idempotent (updateOrCreate) — safe on every deploy.
+# Fills admin user, categories and test catalog on fresh Postgres.
+php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
