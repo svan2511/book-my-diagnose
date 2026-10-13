@@ -1,20 +1,6 @@
-# Merged deploy: React SPA (built to public/app) + Laravel API in ONE image.
-# Context: repository root (D:\lab). See render.yaml.
-
-# ---------- Stage 1: build the React SPA ----------
-FROM node:20-alpine AS frontend
-WORKDIR /build/web-app
-COPY web-app/package.json web-app/package-lock.json ./
-RUN npm ci --no-audit --no-fund
-COPY web-app/ ./
-# Same-origin API — no CORS, no LAN IPs baked in.
-ENV VITE_API_URL=/api/v1 \
-    VITE_BASE=/app/ \
-    VITE_OUTDIR=/app/spa
-RUN npm run build
-
-# ---------- Stage 2: PHP + Apache runtime ----------
-# PHP 8.4 to match composer.lock (symfony 8.x needs >= 8.4.1).
+# Backend-only deploy: Laravel API. Context = backend/ (Render Root Directory = backend).
+# Postgres-ready for Render. Frontend is NOT built here — pre-build locally
+# into public/app first if you want Laravel to serve the SPA, or host it separately.
 FROM php:8.4-apache
 
 # System deps + PHP extensions (Postgres, zip, standard Laravel set).
@@ -39,20 +25,20 @@ RUN printf 'upload_max_filesize=10M\npost_max_size=12M\nmemory_limit=256M\nmax_e
 WORKDIR /var/www/html
 
 # Composer deps first (better layer caching).
-COPY backend/composer.json backend/composer.lock ./
+COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-interaction --optimize-autoloader --no-scripts \
     && composer dump-autoload --optimize --no-scripts
 
-# App code (backend/.env is dockerignored — config comes from environment).
-COPY backend/ ./
+# App code (.env is dockerignored — config comes from environment).
+# NOTE: if public/app (React build) exists locally, it ships too and
+# routes/web.php will serve it same-origin.
+COPY . ./
 # Drop the dev-discovered manifest (references dev-only providers like Pail),
 # then rediscover for the production (--no-dev) vendor set.
 RUN rm -f bootstrap/cache/*.php && php artisan package:discover --ansi
 
-# Built SPA into Laravel's public dir.
-COPY --from=frontend /app/spa ./public/app
-
-COPY docker/entrypoint.sh /entrypoint.sh
+# Entrypoint lives at backend/entrypoint.sh (copied to backend root).
+COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Render injects $PORT at runtime (entrypoint rewires Apache to it).
